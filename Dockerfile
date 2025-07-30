@@ -18,19 +18,24 @@ RUN apk add --no-cache \
     openssh-client \
     sudo
 
-# Copy package files and install dependencies
-COPY container_src/package*.json ./
-RUN npm install --production
+# Copy package files first for better caching
+COPY container_src/package.json container_src/package-lock.json ./
+
+# Install dependencies using npm ci for faster, reliable builds
+RUN npm ci --production --no-optional
 
 # Copy container source code
 COPY container_src/server.js ./
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 -G nodejs
+    adduser -S nodejs -u 1001 -G nodejs
 
 # Set up sudo for the nodejs user (for terminal access)
 RUN echo 'nodejs ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Create home directory and set permissions
+RUN mkdir -p /home/nodejs && chown nodejs:nodejs /home/nodejs
 
 # Expose the port
 EXPOSE 8080
@@ -38,5 +43,8 @@ EXPOSE 8080
 # Switch to non-root user
 USER nodejs
 
+# Set the working directory for the user
+WORKDIR /home/nodejs
+
 # Run the server
-CMD ["node", "server.js"]
+CMD ["node", "/app/server.js"]
