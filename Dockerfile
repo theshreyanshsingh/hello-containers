@@ -1,23 +1,42 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.24-alpine AS build
+FROM node:20-alpine
 
 # Set destination for COPY
 WORKDIR /app
 
-# Download any Go modules
-COPY container_src/go.mod ./
-RUN go mod download
+# Install dependencies for node-pty and general utilities
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    bash \
+    curl \
+    git \
+    vim \
+    nano \
+    openssh-client \
+    sudo
+
+# Copy package files and install dependencies
+COPY container_src/package*.json ./
+RUN npm install --production
 
 # Copy container source code
-COPY container_src/*.go ./
+COPY container_src/server.js ./
 
-# Build
-RUN CGO_ENABLED=0 GOOS=linux go build -o /server
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 -G nodejs
 
-FROM scratch
-COPY --from=build /server /server
+# Set up sudo for the nodejs user (for terminal access)
+RUN echo 'nodejs ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Expose the port
 EXPOSE 8080
 
-# Run
-CMD ["/server"]
+# Switch to non-root user
+USER nodejs
+
+# Run the server
+CMD ["node", "server.js"]

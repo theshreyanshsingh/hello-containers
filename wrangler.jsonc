@@ -11,7 +11,8 @@
     {
       "class_name": "MyContainer",
       "image": "./Dockerfile",
-      "max_instances": 10
+      "instance_type": "basic",
+      "max_instances": 25
     }
   ],
   "durable_objects": {
@@ -27,5 +28,8 @@
       "new_sqlite_classes": ["MyContainer"],
       "tag": "v1"
     }
-  ]
+  ],
+  "limits": {
+    "cpu_ms": 300000
+  }
 }
